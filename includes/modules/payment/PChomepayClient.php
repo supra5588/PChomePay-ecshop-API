@@ -5,7 +5,11 @@
  * Date: 2017/11/27
  * Time: 下午3:19
  */
-
+if (!class_exists('ApiException', false)) {
+    if (!include('ApiException.php')) {
+        throw new Exception('Class not found');
+    }
+}
 class PChomepayClient
 {
     const BASE_URL = "https://api.pchomepay.com.tw/v1";
@@ -234,7 +238,11 @@ class PChomepayClient
         }
 
         if (property_exists($obj, "error_type")) {
-            throw new Exception($obj->message, $obj->code);
+
+            $apiException = new ApiException();
+            $error_message = $apiException->getErrMsg($obj->code);
+
+            throw new Exception($error_message, $obj->code);
         }
 
         return $obj;
@@ -247,9 +255,7 @@ class PChomepayClient
 
     public function log($string)
     {
-        $a = json_encode($string);
-
-        $fp = fopen('/var/www/ecshop/123.txt','w+');
+        $fp = fopen('/var/www/ecshop/error_log2.txt','w+');
         fwrite($fp, $string);
         fclose($fp);
     }

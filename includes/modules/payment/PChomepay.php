@@ -36,7 +36,7 @@ if (isset($set_modules) && $set_modules == TRUE) {
     $modules[$i]['author'] = '<img src="/languages/zh_tw/payment/pchomepay_logo.png">';
 
     /* 網址 */
-    $modules[$i]['website'] = 'https://www.interpay.com.tw/';
+    $modules[$i]['website'] = 'https://www.pchomepay.com.tw/';
 
     /* 版本號 */
     $modules[$i]['version'] = 'beta';
@@ -58,8 +58,21 @@ if (isset($set_modules) && $set_modules == TRUE) {
     );
     return;
 }
+
+if (!class_exists('OrderStatusCodeEnum', false)) {
+    if (!include('OrderStatusCodeEnum.php')) {
+        throw new Exception('Class not found');
+    }
+}
+
 if (!class_exists('PChomepayClient', false)) {
     if (!include('PChomepayClient.php')) {
+        throw new Exception('Class not found');
+    }
+}
+
+if (!class_exists('ApiException', false)) {
+    if (!include('ApiException.php')) {
         throw new Exception('Class not found');
     }
 }
@@ -87,9 +100,8 @@ class PChomepay
         $pay_type = $paytype_array;
         $amount = (int)$order['order_amount'];
         $return_url = return_url(basename(__FILE__, '.php')) . "&order_id=" . $order['order_id'];
-        $fail_return_url = return_url(basename(__FILE__, '.php')) . "&order_id=" . $order['order_id'];
-        $notify_url = return_url(basename(__FILE__, '.php')) . "&order_id=" . $order['order_id'];
-
+        $fail_return_url = null;
+        $notify_url = return_url(basename(__FILE__, '.php')) . "&order_id=" . $order['order_id'] . "&notify=1";
         $items_url = $GLOBALS['ecs']->url() . '/user.php?act=order_detail&order_id=' . $order['order_id'];
         $items_name = $order['order_sn'];
         $items_array = array();
@@ -132,25 +144,33 @@ class PChomepay
             $result = $PChomepayClient->postPayment($paymentData);
             $button = '<div style="text-align:center"><input type="button" onclick="window.open(\'' . $result->payment_url . '\')" value="' . $GLOBALS['_LANG']['PChomepay_button'] . '"/></div>';
             return $button;
+
         } catch (Exception $e) {
 
+            $this->log($e->getMessage());
+            $msg = $e->getMessage();
+            $error_code = $e->getCode();
+            $error = '<div style="text-align:center"><span>' . $error_code . $msg . '</span></div>';
+            return $error;
         }
-
     }
 
     function respond()
     {
-        try {
-            $payment = get_payment($_GET['code']);
-            $order = order_info($_GET['order_id']);
-            $order_id = isset($order['order_id']) ? $order['order_id'] : null;
+        $payment = get_payment($_GET['code']);
+        $order = order_info($_GET['order_id']);
+        $notify = order_info($_GET['notify']);
+        $order_id = isset($order['order_id']) ? $order['order_id'] : null;
 
+
+        try {
             $sql = 'SELECT log_id FROM ' . $GLOBALS['ecs']->table('pay_log') .
                 " WHERE order_id = '$order_id'";
             $log_id = $GLOBALS['db']->getOne($sql);
 
             $PChomepayClient = new PChomepayClient($order, $payment);
             $result = $PChomepayClient->getPayment($order_id);
+
 
             # 紀錄訂單付款方式
             switch ($result->pay_type) {
@@ -174,114 +194,44 @@ class PChomepay
                     $pay_type_note = $result->pay_type . '付款';
             }
 
-            # 紀錄訂單付款方式
-            switch($result->status_code) {
-                case '  ':
-                    break;
-                # 訂單逾時
-                case 'FE':
-                    $pay_status_note = '訂單逾時';
-                    break;
-                # 連線失敗
-                case 'FT':
-                    $pay_status_note = '連線失敗';
-                    break;
-                # 信用卡授權失敗
-                case 'FF':
-                    $pay_status_note = '信用卡授權失敗';
-                    break;
-                # 信用卡授權失敗
-                case 'FA':
-                    $pay_status_note = '信用卡授權失敗';
-                    break;
-                # 支付連審單拒絕
-                case 'FP':
-                    $pay_status_note = '支付連審單拒絕';
-                    break;
-                # 廠商自行審單拒絕
-                case 'FC':
-                    $pay_status_note = '廠商自行審單拒絕';
-                    break;
-                #銀行支付超過限額
-                case 'FEL':
-                    $pay_status_note = '銀行支付超過限額';
-                    break;
-                # 銀行支付超過交易次數
-                case 'FEC':
-                    $pay_status_note = '銀行支付超過交易次數';
-                    break;
-                # 銀行帳戶餘額不足
-                case 'FEB':
-                    $pay_status_note = '銀行帳戶餘額不足';
-                    break;
-                # 銀行支付帳戶異常
-                case 'FEA':
-                    $pay_status_note = '銀行支付帳戶異常';
-                    break;
-                # 銀行支付接收單位業務停止或關閉
-                case 'FES':
-                    $pay_status_note = '銀行支付接收單位業務停止或關閉';
-                    break;
-                # 銀行支付交易逾時
-                case 'FET':
-                    $pay_status_note = '銀行支付交易逾時';
-                    break;
-                # 支付連餘額不足
-                case 'FB':
-                    $pay_status_note = '支付連餘額不足';
-                    break;
-                # 尚未選擇銀行
-                case 'WB':
-                    $pay_status_note = '尚未選擇銀行';
-                    break;
-                # ATM 待繳款
-                case 'WP':
-                    $pay_status_note = 'ATM 待繳款';
-                    break;
-                # 審單中
-                case 'WA':
-                    $pay_status_note = '審單中';
-                    break;
-                # 等待OTP驗證
-                case 'WO':
-                    $pay_status_note = '等待OTP驗證';
-                    break;
-                # ATM 虛擬帳號失效
-                case 'FX':
-                    $pay_status_note = 'ATM 虛擬帳號失效';
-                    break;
-                default:
-                    $pay_status_note = '';
-                    break;
-            }
+            $code = ($result->status_code);             //回傳狀態碼
+            $OrderStatusCodeEnum = new OrderStatusCodeEnum();
+            $pay_status_note = $OrderStatusCodeEnum->getErrMsg($code);
 
-            $pay_success  = $GLOBALS['_LANG']['pay_success'] ." " . $pay_type_note ." " . $pay_status_note ." " . date("Y-m-d H:i:s");
 
-            $pay_wait     = $GLOBALS['_LANG']['pay_wait'] ." " . $pay_type_note ." " . $pay_status_note ." " . date("Y-m-d H:i:s");
+            $pay_success = $GLOBALS['_LANG']['pay_success'] . " " . $pay_type_note . " " . $pay_status_note . " " . date("Y-m-d H:i:s");
 
-            $pay_fail     = $GLOBALS['_LANG']['pay_fail'] ." " . $pay_type_note ." " . $pay_status_note ." " . date("Y-m-d H:i:s");
+            $pay_wait = $GLOBALS['_LANG']['pay_wait'] . " " . $pay_type_note . " " . $pay_status_note . " " . date("Y-m-d H:i:s");
 
-            if ($result->status == "W")
-            {
+            $pay_fail = $GLOBALS['_LANG']['pay_fail'] . " " . $pay_type_note . " " . $pay_status_note . " " . date("Y-m-d H:i:s");
+
+            if ($result->status == "W") {
                 order_paid($log_id, 1, $pay_wait);
 
                 /* 修改此次支付操作的状态为已付款 */
                 $sql = 'UPDATE ' . $GLOBALS['ecs']->table('pay_log') .
                     " SET is_paid = '0' WHERE log_id = '$log_id'";
                 $GLOBALS['db']->query($sql);
-                echo "success";
+                if ($notify) {
+                    echo "success";
+                    exit;
+                }
                 return $result;
             }
-            if ($result->status == "S")
-            {
+            if ($result->status == "S") {
                 order_paid($log_id, 2, $pay_success);
-                echo "success";
+                if ($notify) {
+                    echo "success";
+                    exit;
+                }
                 return $result;
             }
-            if ($result->status == "F")
-            {
+            if ($result->status == "F") {
                 order_paid($log_id, 0, $pay_fail);
-                echo "success";
+                if ($notify) {
+                    echo "success";
+                    exit;
+                }
                 return null;
             }
 
@@ -291,11 +241,12 @@ class PChomepay
             return null;
         }
 
+
     }
 
     public function log($string)
     {
-        $fp = fopen('/var/www/ecshop/123.txt', "w+");
+        $fp = fopen('/var/www/ecshop/error_log.txt', "w+");
         fwrite($fp, $string);
         fclose($fp);
     }
