@@ -1,1 +1,12 @@
-<p><span style="text-decoration: underline;"><strong>PChomePay-for-ECshop</strong></span><br /><br /><strong>Current Version:1.0.0</strong><br /><br />This plugin can quickly add PChomePay payment to your ECshop site!<br />Features<br /><br /><strong>Currently supports the following features:</strong><br /><br />&nbsp;&nbsp;&nbsp; Requesting payments<br /><br /><strong>How to use</strong><br /><br />&nbsp; Download and unzip copy file to assignation path and merge. Warning: Don't replace<br /><br />&nbsp; Enter to ECshop backends and login<br /><br />&nbsp; you can set in payment page<br /><br />Please raise new issues for any problems or feedbacks you may have. <br /><br />Fixes and enhancements are welcomed through pull requests!</p>
+<p><span style="text-decoration: underline;"><strong>PChomePay-for-ECshop</strong></span></p>
+<p><br /><strong>Current Version:1.0.0</strong></p>
+<p>This plugin can quickly add PChomePay payment to your ECshop site!</p>
+<p><span style="text-decoration: underline;"><strong>Features</strong></span></p>
+<p><strong>Currently supports the following features:</strong></p>
+<p>Requesting payments<br /><br /><span style="text-decoration: underline;"><strong>How to use</strong></span></p>
+<p>Download and unzip copy file to assignation path and merge. Warning: Don't replace</p>
+<p>Enter to ECshop backends and login</p>
+<p>you can set in payment page</p>
+<p><span style="text-decoration: underline;"><strong>feedbacks</strong></span></p>
+<p>Please raise new issues for any problems or feedbacks you may have.</p>
+<p>Fixes and enhancements are welcomed through pull requests!</p>
